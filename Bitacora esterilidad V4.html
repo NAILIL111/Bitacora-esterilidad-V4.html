@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bitácora Volante – Prueba de Esterilidad (Interactiva)</title>
+  <style>
+    :root{
+      --c1:#003366; /* ALS blue */
+      --c2:#1f7a8c;
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --ink:#1a1d2b;
+      --muted:#6b7280;
+      --bd:#d6dde8;
+      --ok:#0e9f6e;
+      --warn:#eab308;
+      --bad:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:16px; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial}
+    h1{margin:0 0 6px; color:var(--c1); font-size:22px}
+    h2{margin:22px 0 10px; color:var(--c1); font-size:16px}
+    h3{margin:14px 0 8px; color:var(--c1); font-size:15px}
+    .app{max-width:1200px; margin:0 auto}
+    .card{background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.04)}
+    .grid{display:grid; gap:12px}
+    .g2{grid-template-columns:repeat(2, minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3, minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4, minmax(0,1fr))}
+    @media (max-width:900px){.g4{grid-template-columns:repeat(2, minmax(0,1fr))}}
+    @media (max-width:680px){.g2,.g3{grid-template-columns:1fr}}
+    label{font-weight:600; color:#0b1220; font-size:13px}
+    input, select, textarea{width:100%; border:1px solid var(--bd); border-radius:10px; padding:10px 12px; background:#fff; color:var(--ink); font:inherit}
+    input[type="number"]{appearance:textfield}
+    input:focus, select:focus, textarea:focus{outline:2px solid #cde2ff; border-color:#9cc7ff}
+    .muted{color:var(--muted)}
+    .help{font-size:12px; color:var(--muted)}
+    .toolbar{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0}
+    .btn{border:1px solid var(--bd); background:#fff; padding:9px 12px; border-radius:10px; cursor:pointer; font-weight:600}
+    .btn.primary{background:var(--c1); color:#fff; border-color:var(--c1)}
+    .btn.ghost{background:transparent}
+    .btn.warn{background:#fff7e6; border-color:#f3c57a}
+    .pill{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--bd); border-radius:999px; padding:6px 10px; font-size:12px; color:var(--muted)}
+    .status.ok{color:var(--ok)}
+    .status.bad{color:var(--bad)}
+    .section{margin:16px 0}
+    .hr{height:1px; background:var(--bd); margin:10px 0 0}
+
+    /* Tablas de lecturas */
+    .table-wrap{overflow:auto; border:1px solid var(--bd); border-radius:12px}
+    table{width:100%; border-collapse:collapse; table-layout:fixed}
+    thead th{position:sticky; top:0; background:#f0f5ff; color:#0b1220; border-bottom:1px solid var(--bd); padding:10px; text-align:center}
+    tbody td, tbody th{border-bottom:1px solid var(--bd); padding:8px; text-align:center; vertical-align:top}
+    tbody th{background:#fafbff; text-align:left}
+    td select{width:100%; min-width:auto}
+    .daily-meta input{display:block; width:100%; margin:4px 0; font-size:11px; padding:4px; box-sizing:border-box}
+
+    /* Mantener bloques unidos al imprimir */
+    .keep-together {break-inside: avoid; page-break-inside: avoid;}
+    .keep-together * {break-inside: avoid; page-break-inside: avoid;}
+
+    /* Print */
+    @media print{
+      @page{ size: A4 portrait; margin:10mm }
+      body{margin:0; background:#fff}
+      .toolbar, #importFileWrap, .no-print{display:none !important}
+      .card{border:none; box-shadow:none; padding:0}
+      .table-wrap{overflow:visible; border:none}
+      thead th{position:static}
+      input, select, textarea{border:1px solid #c7cddb}
+      .pill{border:none}
+
+      /* Compactación moderada para legibilidad */
+      body{font-size:12px}
+      thead th{padding:6px 6px; font-size:12px}
+      tbody td, tbody th{padding:6px 6px; font-size:12px}
+      .daily-meta input, select{font-size:12px; padding:4px 6px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <header style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+        <div>
+          <h1>Bitácora Volante – Prueba de Esterilidad</h1>
+          <div class="muted">Plantilla digital interactiva • ISO/IEC 17025 • GLP • Uso interno</div>
+        </div>
+        <div class="pill" id="saveState">Sin cambios</div>
+      </header>
+
+      <div class="toolbar no-print">
+        <button class="btn primary" onclick="validateAndPrint()">Imprimir / PDF</button>
+        <button class="btn" onclick="saveLocal()">Guardar local</button>
+        <button class="btn" onclick="restoreLocal()">Restaurar</button>
+        <button class="btn ghost" onclick="clearForm()">Limpiar</button>
+        <button class="btn" onclick="exportJSON()">Exportar JSON</button>
+        <label class="btn" id="importFileWrap">Importar JSON<input id="importFile" type="file" accept="application/json" style="display:none"/></label>
+        <span class="pill">Versión plantilla: <strong>v1.2</strong></span>
+      </div>
+
+      <!-- Identificación general -->
+      <section class="section">
+        <h2>Identificación del análisis</h2>
+        <div class="grid g2">
+          <div>
+            <label>Folio</label>
+            <input required name="folio" />
+          </div>
+          <div>
+            <label>Cliente</label>
+            <input required name="cliente" />
+          </div>
+          <div>
+            <label>Producto / Material</label>
+            <input required name="producto" />
+          </div>
+          <div>
+            <label>Lote</label>
+            <input required name="lote" />
+          </div>
+          <div>
+            <label>Analista</label>
+            <input required name="analista" />
+          </div>
+          <div>
+            <label>Fecha / Hora de inicio del análisis</label>
+            <input required name="inicio_analisis" type="datetime-local" />
+          </div>
+          <div>
+            <label>Referencia bibliográfica DSP (en línea, versión)</label>
+            <input required name="ref_dsp" placeholder="p.ej., DSP-EST-001 v3.2 (2025-08)" />
+          </div>
+          <div>
+            <label>Especificación a cumplir</label>
+            <input required name="especificacion" placeholder="Criterios de aceptación" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Desarrollo analítico (igual que antes) -->
+      <section class="section">
+        <h2>Desarrollo Analítico</h2>
+        <h3>Controles, medios y reactivos</h3>
+        <div class="grid g3">
+          <div>
+            <label>Hoja de Control (clave)</label>
+            <input required name="hc_clave" />
+          </div>
+          <div>
+            <label>Páginas</label>
+            <input required name="hc_paginas" type="number" min="1" />
+          </div>
+          <div>
+            <label>Reactivos</label>
+            <input required name="reactivos" placeholder="p.ej., TIO, TSB, alcohol isopropílico 70%" />
+          </div>
+        </div>
+        <h3>Condiciones preliminares; preparación de la muestra</h3>
+        <details open>
+          <summary>Checklist de condiciones asépticas</summary>
+          <div class="grid g2" style="margin-top:10px">
+            <label><input type="checkbox" name="prep_campana"/> La prueba se realizará en campana de flujo laminar / seguridad biológica.</label>
+            <label><input type="checkbox" name="prep_desinfeccion"/> Desinfectar muestras con alcohol isopropílico al 70% y/o desinfectante aplicable antes de ingresar.</label>
+          </div>
+        </details>
+        <div class="grid g3" style="margin-top:10px">
+          <div>
+            <label>Número de piezas / cantidad de muestra</label>
+            <input required type="number" min="0" name="num_piezas" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Determinación por análisis directo (igual) -->
+      <section class="section">
+        <h2>Determinación • Método de Análisis Directo</h2>
+        <ol class="help" style="margin-top:-6px">
+          <li>Abrir el empaque que contiene la muestra.</li>
+          <li>Con ayuda de pinzas estériles, separar los componentes.</li>
+          <li>Depositar <em>n</em> piezas en 450 mL de TSB y <em>n</em> piezas en 450 mL de TIO.</li>
+          <li>Cerrar frascos, agitar suavemente e identificar.</li>
+          <li>Testigos negativos: preparar TSB y TIO sin adición de muestra.</li>
+        </ol>
+        <div class="grid g4">
+          <div>
+            <label>Piezas en TSB</label>
+            <input type="number" min="0" name="piezas_tsb" />
+          </div>
+          <div>
+            <label>Volumen TSB (mL)</label>
+            <input type="number" min="1" name="vol_tsb" value="450" />
+          </div>
+          <div>
+            <label>Piezas en TIO</label>
+            <input type="number" min="0" name="piezas_tio" />
+          </div>
+          <div>
+            <label>Volumen TIO (mL)</label>
+            <input type="number" min="1" name="vol_tio" value="450" />
+          </div>
+        </div>
+        <p class="help">Testigos negativos (TSB y TIO): seguir la misma técnica, sin adición de muestra.</p>
+      </section>
+
+      <!-- Condiciones de incubación (igual) -->
+      <section class="section">
+        <h2>Condiciones de incubación</h2>
+        <div class="grid g3">
+          <div>
+            <label>TIO</label>
+            <input value="30–35 °C" name="cond_tio" />
+          </div>
+          <div>
+            <label>TSB</label>
+            <input value="20–25 °C" name="cond_tsb" />
+          </div>
+          <div>
+            <label>Tiempo</label>
+            <input value="14 días" name="cond_tiempo" />
+          </div>
+        </div>
+        <div class="grid g2" style="margin-top:10px">
+          <div>
+            <label>Fecha y hora de inicio de la incubación</label>
+            <input required type="datetime-local" name="inicio_incubacion" />
+            <div class="help">La fecha estimada de término se calculará automáticamente.</div>
+          </div>
+          <div>
+            <label>Realizado por</label>
+            <input required name="realizado_por" />
+          </div>
+        </div>
+        <div class="grid g2" style="margin-top:10px">
+          <div>
+            <label>Fecha estimada de término (14 días)</label>
+            <input name="fin_estimado" readonly />
+          </div>
+        </div>
+      </section>
+
+      <!-- Lectura de Resultados: Días 1–7 -->
+      <section class="section keep-together">
+        <h2>Lectura de Resultados — Días 1–7</h2>
+        <div class="table-wrap">
+          <table id="tabla14a" data-days="7">
+            <thead>
+              <tr>
+                <th>Medios de cultivo</th>
+                <th>Día 1</th><th>Día 2</th><th>Día 3</th><th>Día 4</th><th>Día 5</th><th>Día 6</th><th>Día 7</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Prueba (Muestra) TIO</th>
+                <td data-row="m_tio" data-day="1"></td><td data-row="m_tio" data-day="2"></td><td data-row="m_tio" data-day="3"></td><td data-row="m_tio" data-day="4"></td><td data-row="m_tio" data-day="5"></td><td data-row="m_tio" data-day="6"></td><td data-row="m_tio" data-day="7"></td>
+              </tr>
+              <tr>
+                <th>Prueba (Muestra) TSB</th>
+                <td data-row="m_tsb" data-day="1"></td><td data-row="m_tsb" data-day="2"></td><td data-row="m_tsb" data-day="3"></td><td data-row="m_tsb" data-day="4"></td><td data-row="m_tsb" data-day="5"></td><td data-row="m_tsb" data-day="6"></td><td data-row="m_tsb" data-day="7"></td>
+              </tr>
+              <tr>
+                <th>Control (Testigo) TIO</th>
+                <td data-row="c_tio" data-day="1"></td><td data-row="c_tio" data-day="2"></td><td data-row="c_tio" data-day="3"></td><td data-row="c_tio" data-day="4"></td><td data-row="c_tio" data-day="5"></td><td data-row="c_tio" data-day="6"></td><td data-row="c_tio" data-day="7"></td>
+              </tr>
+              <tr>
+                <th>Control (Testigo) TSB</th>
+                <td data-row="c_tsb" data-day="1"></td><td data-row="c_tsb" data-day="2"></td><td data-row="c_tsb" data-day="3"></td><td data-row="c_tsb" data-day="4"></td><td data-row="c_tsb" data-day="5"></td><td data-row="c_tsb" data-day="6"></td><td data-row="c_tsb" data-day="7"></td>
+              </tr>
+              <tr>
+                <th>Firma / Fecha-Hora (1–7)</th>
+                <td class="daily-meta"><input name="firma_d1" placeholder="Firma"/><input type="datetime-local" name="fh_d1"/></td>
+                <td class="daily-meta"><input name="firma_d2" placeholder="Firma"/><input type="datetime-local" name="fh_d2"/></td>
+                <td class="daily-meta"><input name="firma_d3" placeholder="Firma"/><input type="datetime-local" name="fh_d3"/></td>
+                <td class="daily-meta"><input name="firma_d4" placeholder="Firma"/><input type="datetime-local" name="fh_d4"/></td>
+                <td class="daily-meta"><input name="firma_d5" placeholder="Firma"/><input type="datetime-local" name="fh_d5"/></td>
+                <td class="daily-meta"><input name="firma_d6" placeholder="Firma"/><input type="datetime-local" name="fh_d6"/></td>
+                <td class="daily-meta"><input name="firma_d7" placeholder="Firma"/><input type="datetime-local" name="fh_d7"/></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Lectura de Resultados: Días 8–14 -->
+      <section class="section keep-together">
+        <h2>Lectura de Resultados — Días 8–14</h2>
+        <div class="table-wrap">
+          <table id="tabla14b" data-days="7">
+            <thead>
+              <tr>
+                <th>Medios de cultivo</th>
+                <th>Día 8</th><th>Día 9</th><th>Día 10</th><th>Día 11</th><th>Día 12</th><th>Día 13</th><th>Día 14</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Prueba (Muestra) TIO</th>
+                <td data-row="m_tio" data-day="8"></td><td data-row="m_tio" data-day="9"></td><td data-row="m_tio" data-day="10"></td><td data-row="m_tio" data-day="11"></td><td data-row="m_tio" data-day="12"></td><td data-row="m_tio" data-day="13"></td><td data-row="m_tio" data-day="14"></td>
+              </tr>
+              <tr>
+                <th>Prueba (Muestra) TSB</th>
+                <td data-row="m_tsb" data-day="8"></td><td data-row="m_tsb" data-day="9"></td><td data-row="m_tsb" data-day="10"></td><td data-row="m_tsb" data-day="11"></td><td data-row="m_tsb" data-day="12"></td><td data-row="m_tsb" data-day="13"></td><td data-row="m_tsb" data-day="14"></td>
+              </tr>
+              <tr>
+                <th>Control (Testigo) TIO</th>
+                <td data-row="c_tio" data-day="8"></td><td data-row="c_tio" data-day="9"></td><td data-row="c_tio" data-day="10"></td><td data-row="c_tio" data-day="11"></td><td data-row="c_tio" data-day="12"></td><td data-row="c_tio" data-day="13"></td><td data-row="c_tio" data-day="14"></td>
+              </tr>
+              <tr>
+                <th>Control (Testigo) TSB</th>
+                <td data-row="c_tsb" data-day="8"></td><td data-row="c_tsb" data-day="9"></td><td data-row="c_tsb" data-day="10"></td><td data-row="c_tsb" data-day="11"></td><td data-row="c_tsb" data-day="12"></td><td data-row="c_tsb" data-day="13"></td><td data-row="c_tsb" data-day="14"></td>
+              </tr>
+              <tr>
+                <th>Firma / Fecha-Hora (8–14)</th>
+                <td class="daily-meta"><input name="firma_d8" placeholder="Firma"/><input type="datetime-local" name="fh_d8"/></td>
+                <td class="daily-meta"><input name="firma_d9" placeholder="Firma"/><input type="datetime-local" name="fh_d9"/></td>
+                <td class="daily-meta"><input name="firma_d10" placeholder="Firma"/><input type="datetime-local" name="fh_d10"/></td>
+                <td class="daily-meta"><input name="firma_d11" placeholder="Firma"/><input type="datetime-local" name="fh_d11"/></td>
+                <td class="daily-meta"><input name="firma_d12" placeholder="Firma"/><input type="datetime-local" name="fh_d12"/></td>
+                <td class="daily-meta"><input name="firma_d13" placeholder="Firma"/><input type="datetime-local" name="fh_d13"/></td>
+                <td class="daily-meta"><input name="firma_d14" placeholder="Firma"/><input type="datetime-local" name="fh_d14"/></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Notas y criterios -->
+      <section class="section">
+        <h2>Notas y Criterio de Prueba</h2>
+        <ul class="help">
+          <li>(?) Presencia de turbidez que puede ser a causa de la muestra o del crecimiento microbiano.</li>
+          <li>(+) Presencia de crecimiento microbiano.</li>
+          <li>(–) Ausencia de crecimiento microbiano.</li>
+        </ul>
+        <div class="hr"></div>
+        <p class="help" style="margin-top:10px">
+          <strong>Criterio:</strong> El testigo negativo no debe presentar crecimiento. Si a los 14 días existe turbidez por la muestra y no puede determinarse contaminación, transferir ≥1 mL al mismo medio y continuar incubación (originales y resembrados) por ≥4 días.
+        </p>
+      </section>
+
+      <!-- Resiembra dividida (1–3 y 4–5) -->
+      <section class="section">
+        <h2>¿Aplica Resiembra (pase) posterior a los 14 días?</h2>
+        <label class="pill"><input type="checkbox" name="aplica_resiembra" id="aplica_resiembra"/> Marcar si aplica</label>
+        <div id="resiembra" style="display:none; margin-top:12px">
+          <h3>Días 1–3</h3>
+          <div class="table-wrap keep-together">
+            <table id="rtablaA" data-days="3">
+              <thead>
+                <tr>
+                  <th>Medios de cultivo</th>
+                  <th>Día 1</th><th>Día 2</th><th>Día 3</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>Prueba (Muestra) TIO</th>
+                  <td data-row="rm_tio" data-day="1"></td><td data-row="rm_tio" data-day="2"></td><td data-row="rm_tio" data-day="3"></td>
+                </tr>
+                <tr>
+                  <th>Prueba (Muestra) TSB</th>
+                  <td data-row="rm_tsb" data-day="1"></td><td data-row="rm_tsb" data-day="2"></td><td data-row="rm_tsb" data-day="3"></td>
+                </tr>
+                <tr>
+                  <th>Control (Testigo) TIO</th>
+                  <td data-row="rc_tio" data-day="1"></td><td data-row="rc_tio" data-day="2"></td><td data-row="rc_tio" data-day="3"></td>
+                </tr>
+                <tr>
+                  <th>Control (Testigo) TSB</th>
+                  <td data-row="rc_tsb" data-day="1"></td><td data-row="rc_tsb" data-day="2"></td><td data-row="rc_tsb" data-day="3"></td>
+                </tr>
+                <tr>
+                  <th>Firma / Fecha-Hora (1–3)</th>
+                  <td class="daily-meta"><input name="firma_r_d1" placeholder="Firma"/><input type="datetime-local" name="fh_r_d1"/></td>
+                  <td class="daily-meta"><input name="firma_r_d2" placeholder="Firma"/><input type="datetime-local" name="fh_r_d2"/></td>
+                  <td class="daily-meta"><input name="firma_r_d3" placeholder="Firma"/><input type="datetime-local" name="fh_r_d3"/></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Días 4–5</h3>
+          <div class="table-wrap keep-together">
+            <table id="rtablaB" data-days="2">
+              <thead>
+                <tr>
+                  <th>Medios de cultivo</th>
+                  <th>Día 4</th><th>Día 5</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>Prueba (Muestra) TIO</th>
+                  <td data-row="rm_tio" data-day="4"></td><td data-row="rm_tio" data-day="5"></td>
+                </tr>
+                <tr>
+                  <th>Prueba (Muestra) TSB</th>
+                  <td data-row="rm_tsb" data-day="4"></td><td data-row="rm_tsb" data-day="5"></td>
+                </tr>
+                <tr>
+                  <th>Control (Testigo) TIO</th>
+                  <td data-row="rc_tio" data-day="4"></td><td data-row="rc_tio" data-day="5"></td>
+                </tr>
+                <tr>
+                  <th>Control (Testigo) TSB</th>
+                  <td data-row="rc_tsb" data-day="4"></td><td data-row="rc_tsb" data-day="5"></td>
+                </tr>
+                <tr>
+                  <th>Firma / Fecha-Hora (4–5)</th>
+                  <td class="daily-meta"><input name="firma_r_d4" placeholder="Firma"/><input type="datetime-local" name="fh_r_d4"/></td>
+                  <td class="daily-meta"><input name="firma_r_d5" placeholder="Firma"/><input type="datetime-local" name="fh_r_d5"/></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid g2" style="margin-top:10px">
+            <div>
+              <label>Revisó</label>
+              <input name="reviso_res" />
+            </div>
+            <div>
+              <label>Fecha/Hora</label>
+              <input type="datetime-local" name="reviso_res_fh" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resultado final & firmas (igual) -->
+      <section class="section">
+        <h2>Resultado Final</h2>
+        <label>Conclusión</label>
+        <textarea name="conclusion" rows="3" placeholder="Conclusión técnica de la prueba"></textarea>
+        <div class="grid g3" style="margin-top:10px">
+          <div>
+            <label>Firma Analista (escriba su nombre)</label>
+            <input name="firma_analista" />
+          </div>
+          <div>
+            <label>Fecha/Hora</label>
+            <input type="datetime-local" name="firma_analista_fh" />
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>Firma (trazo) opcional</label>
+          <canvas id="sig" class="sig-pad"></canvas>
+          <div class="toolbar no-print" style="gap:6px; margin-top:6px">
+            <button class="btn" onclick="sigClear()">Borrar firma</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Flujo de Aprobación (igual) -->
+      <section class="section">
+        <h2>Flujo de Aprobación</h2>
+        <details>
+          <summary>Reporte de Resultados (Analista / Supervisor / Jefe)</summary>
+          <div class="grid g3" style="margin-top:10px">
+            <div>
+              <label>Usuario</label>
+              <input name="rep_user" />
+            </div>
+            <div>
+              <label>Contraseña</label>
+              <input type="password" name="rep_pass" />
+            </div>
+            <div style="display:flex; align-items:flex-end">
+              <button class="btn" type="button" onclick="toggleSectionAuth('rep')">Desbloquear / Bloquear</button>
+            </div>
+          </div>
+          <div id="rep_locked" class="help">Sección bloqueada hasta autenticación (solo captura y marca de tiempo).</div>
+          <div id="rep_body" style="opacity:.6; pointer-events:none; margin-top:8px">
+            <div class="grid g2">
+              <div>
+                <label>Capturado por</label>
+                <input name="rep_by" />
+              </div>
+              <div>
+                <label>Fecha/Hora</label>
+                <input type="datetime-local" name="rep_fh" />
+              </div>
+            </div>
+            <label style="margin-top:8px">Observaciones / Comentarios</label>
+            <textarea name="rep_obs" rows="2"></textarea>
+          </div>
+        </details>
+
+        <details style="margin-top:10px">
+          <summary>Revisión de Resultados (Supervisor / Jefe / Gerencia)</summary>
+          <div class="grid g3" style="margin-top:10px">
+            <div>
+              <label>Usuario</label>
+              <input name="rev_user" />
+            </div>
+            <div>
+              <label>Contraseña</label>
+              <input type="password" name="rev_pass" />
+            </div>
+            <div style="display:flex; align-items:flex-end">
+              <button class="btn" type="button" onclick="toggleSectionAuth('rev')">Desbloquear / Bloquear</button>
+            </div>
+          </div>
+          <div id="rev_locked" class="help">Sección bloqueada hasta autenticación (solo captura y marca de tiempo).</div>
+          <div id="rev_body" style="opacity:.6; pointer-events:none; margin-top:8px">
+            <div class="grid g3">
+              <div>
+                <label>Revisó</label>
+                <input name="rev_by" />
+              </div>
+              <div>
+                <label>Fecha/Hora</label>
+                <input type="datetime-local" name="rev_fh" />
+              </div>
+              <div>
+                <label>Estatus de Revisión</label>
+                <select name="rev_status">
+                  <option value="">Seleccione…</option>
+                  <option>Aprobado</option>
+                  <option>Rechazado</option>
+                  <option>Con aclaraciones</option>
+                </select>
+              </div>
+            </div>
+            <label style="margin-top:8px">Comentarios de revisión</label>
+            <textarea name="rev_obs" rows="2"></textarea>
+          </div>
+        </details>
+      </section>
+
+      <footer class="section" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+        <div class="help">ALCOA+: Datos trazables, legibles, contemporáneos, originales y exactos. Esta plantilla no sustituye los PNO aplicables.</div>
+        <div class="muted" id="computedInfo">—</div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // ==== Opciones de día ====
+    const opts = [
+      {v:"", t:"—"},
+      {v:"-", t:"(–) Ausencia"},
+      {v:"+", t:"(+) Crecimiento"},
+      {v:"?", t:"(?) Turbidez"}
+    ];
+    function buildDayCell(td){
+      const key = td.getAttribute('data-row');
+      const day = td.getAttribute('data-day');
+      if(!key || !day) return;
+      const sel = document.createElement('select');
+      sel.name = `${key}_d${day}`;
+      for(const o of opts){
+        const op = document.createElement('option');
+        op.value = o.v; op.textContent = o.t; sel.appendChild(op);
+      }
+      td.appendChild(sel);
+    }
+    function initTables(){
+      document.querySelectorAll('table[data-days] td[data-row]').forEach(buildDayCell);
+    }
+
+    // ==== Resiembra toggle ====
+    const cbRes = document.getElementById('aplica_resiembra');
+    const resBox = document.getElementById('resiembra');
+    cbRes.addEventListener('change', ()=>{
+      resBox.style.display = cbRes.checked ? 'block' : 'none';
+    });
+
+    // ==== Fin estimado de incubación ====
+    const inicioInc = document.querySelector('input[name="inicio_incubacion"]');
+    const finEst = document.querySelector('input[name="fin_estimado"]');
+    function computeFin(){
+      const v = inicioInc.value;
+      if(!v){ finEst.value = ""; return; }
+      const d = new Date(v);
+      if(!isNaN(d)){
+        const d2 = new Date(d.getTime());
+        d2.setDate(d2.getDate()+14);
+        finEst.value = d2.toLocaleString();
+      }
+    }
+    inicioInc.addEventListener('change', ()=>{computeFin(); markDirty();});
+
+    // ==== Firma (canvas) ====
+    const sig = document.getElementById('sig');
+    const ctx = sig?.getContext('2d');
+    let drawing=false, prev={x:0,y:0};
+    function sigResize(){
+      if(!sig) return;
+      const data = sig.toDataURL();
+      const {width} = sig.getBoundingClientRect();
+      sig.width = width; sig.height = 140;
+      if(data) loadImageOnCanvas(data);
+    }
+    function loadImageOnCanvas(src){
+      if(!sig) return;
+      const img = new Image();
+      img.onload = ()=>{ ctx.clearRect(0,0,sig.width,sig.height); ctx.drawImage(img,0,0); };
+      img.src = src;
+    }
+    if(sig){
+      window.addEventListener('resize', sigResize);
+      function sigStart(e){ drawing=true; const p=pt(e); prev=p; }
+      function sigEnd(){ drawing=false; }
+      function pt(e){
+        const r = sig.getBoundingClientRect();
+        const x = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+        const y = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+        return {x, y};
+      }
+      function sigMove(e){
+        if(!drawing) return;
+        ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#111827';
+        const p = pt(e);
+        ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        prev = p; markDirty();
+        e.preventDefault();
+      }
+      function sigClear(){ ctx.clearRect(0,0,sig.width,sig.height); markDirty(); }
+      window.sigClear = sigClear;
+      sig.addEventListener('mousedown', sigStart); sig.addEventListener('touchstart', sigStart);
+      sig.addEventListener('mousemove', sigMove); sig.addEventListener('touchmove', sigMove, {passive:false});
+      window.addEventListener('mouseup', sigEnd); sig.addEventListener('touchend', sigEnd);
+    }
+
+    // ==== Autenticación (bloqueo simple) ====
+    const sections = {
+      rep: {body: '#rep_body', lock:'#rep_locked', user:'rep_user', pass:'rep_pass'},
+      rev: {body: '#rev_body', lock:'#rev_locked', user:'rev_user', pass:'rev_pass'}
+    };
+    function toggleSectionAuth(key){
+      const s = sections[key];
+      const body = document.querySelector(s.body);
+      const lock = document.querySelector(s.lock);
+      const u = document.querySelector(`input[name="${s.user}"]`).value.trim();
+      const p = document.querySelector(`input[name="${s.pass}"]`).value.trim();
+      if(body.style.pointerEvents==='none'){
+        if(!u || !p){ alert('Ingrese usuario y contraseña para desbloquear.'); return; }
+        body.style.pointerEvents='auto'; body.style.opacity='1'; lock.style.display='none';
+      }else{
+        body.style.pointerEvents='none'; body.style.opacity='.6'; lock.style.display='block';
+      }
+      markDirty();
+    }
+    window.toggleSectionAuth = toggleSectionAuth;
+
+    // ==== Persistencia (localStorage / JSON) ====
+    const LS_KEY = 'bitacora-esterilidad-v1_2';
+    const saveState = document.getElementById('saveState');
+    function formToJSON(){
+      const data = {};
+      document.querySelectorAll('input, select, textarea').forEach(el=>{
+        if(el.type==='file') return;
+        if(el.type==='checkbox') data[el.name] = el.checked; else data[el.name] = el.value;
+      });
+      if(sig) data.__firma_png = sig.toDataURL();
+      return data;
+    }
+    function jsonToForm(data){
+      document.querySelectorAll('input, select, textarea').forEach(el=>{
+        if(!(el.name in data)) return;
+        if(el.type==='checkbox') el.checked = !!data[el.name]; else el.value = data[el.name];
+      });
+      if(data.__firma_png && sig){
+        const img = new Image();
+        img.onload = ()=>{ ctx.clearRect(0,0,sig.width,sig.height); ctx.drawImage(img,0,0); };
+        img.src = data.__firma_png;
+      }
+      computeFin();
+      cbRes.checked = !!data['aplica_resiembra'];
+      resBox.style.display = cbRes.checked ? 'block' : 'none';
+    }
+    function saveLocal(){
+      localStorage.setItem(LS_KEY, JSON.stringify(formToJSON()));
+      saveState.textContent = 'Guardado local • ' + new Date().toLocaleString();
+      saveState.classList.add('status','ok');
+    }
+    function restoreLocal(){
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw){ alert('No hay datos guardados.'); return; }
+      try{ jsonToForm(JSON.parse(raw)); markSaved(); }catch(e){ alert('No se pudo restaurar: '+e.message); }
+    }
+    function clearForm(){
+      if(!confirm('¿Limpiar toda la bitácora? Esta acción no se puede deshacer.')) return;
+      document.querySelectorAll('input, select, textarea').forEach(el=>{
+        if(el.type==='checkbox') el.checked=false; else el.value='';
+      });
+      document.querySelectorAll('select').forEach(s=> s.value='');
+      if(sig) sigClear();
+      computeFin();
+      cbRes.checked=false; resBox.style.display='none';
+      markDirty();
+    }
+    function exportJSON(){
+      const blob = new Blob([JSON.stringify(formToJSON(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'bitacora_esterilidad.json';
+      a.click();
+    }
+    document.getElementById('importFile').addEventListener('change', (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      const fr = new FileReader();
+      fr.onload = ()=>{ try{ jsonToForm(JSON.parse(fr.result)); markSaved(); }catch(err){ alert('JSON inválido.'); } };
+      fr.readAsText(f);
+    });
+    window.saveLocal = saveLocal; window.restoreLocal = restoreLocal; window.clearForm = clearForm; window.exportJSON = exportJSON;
+
+    // Auto-guardado en cambios
+    function markDirty(){ saveState.textContent='Cambios sin guardar'; saveState.classList.remove('ok'); computedInfo(); }
+    function markSaved(){ saveState.textContent='Restaurado'; saveState.classList.add('status','ok'); computedInfo(); }
+    document.addEventListener('input', (e)=>{ if(e.target.matches('input, select, textarea')) markDirty(); });
+
+    // ==== Validación mínima + impresión ====
+    function validateRequired(selector){
+      const missing=[];
+      document.querySelectorAll(selector).forEach(el=>{
+        if(el.hasAttribute('required') && !el.value){ missing.push(el.previousElementSibling?.textContent || el.name); el.style.outline='2px solid #ffd7d7'; }
+        else el.style.outline='';
+      });
+      return missing;
+    }
+    function validateAndPrint(){
+      const missing = validateRequired('input, textarea, select');
+      if(missing.length){
+        alert('Complete los campos obligatorios antes de imprimir:\n- '+missing.join('\n- '));
+        return;
+      }
+      window.print();
+    }
+    window.validateAndPrint = validateAndPrint;
+
+    // ==== Info calculada ====
+    const info = document.getElementById('computedInfo');
+    function computedInfo(){
+      const folio = document.querySelector('input[name="folio"]').value || '–';
+      const cliente = document.querySelector('input[name="cliente"]').value || '–';
+      const analista = document.querySelector('input[name="analista"]').value || '–';
+      info.textContent = `Folio: ${folio} • Cliente: ${cliente} • Analista: ${analista}`;
+    }
+
+    // ==== Init ====
+    function init(){
+      initTables();
+      if(sig) sigResize();
+      computedInfo();
+      const nowISO = new Date().toISOString().slice(0,16);
+      ['inicio_analisis','reviso_14_fh','firma_analista_fh','rep_fh','rev_fh','inicio_incubacion'].forEach(n=>{
+        const el = document.querySelector(`input[name="${n}"]`);
+        if(el && !el.value) el.value = nowISO;
+      });
+      computeFin();
+      const raw = localStorage.getItem(LS_KEY);
+      if(raw){ try{ jsonToForm(JSON.parse(raw)); markSaved(); }catch(e){} }
+    }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
